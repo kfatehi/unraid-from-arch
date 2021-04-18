@@ -29,9 +29,10 @@ VIRTINSTALL="virt-install --connect $QEMU_URI"
 
 MEM=1024
 CPUS=1
-BRIDGE=br0
+BRIDGE=$UNRAID_KVM_BRIDGE
 
 # Check if domain already exists
+scp /usr/bin/nc $UNRAID_HOST:/usr/bin/nc
 $VIRSH dominfo $1 > /dev/null 2>&1
 if [ "$?" -eq 0 ]; then
   echo -n "[WARNING] $1 already exists.  "

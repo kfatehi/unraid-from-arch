@@ -5,15 +5,24 @@ if ! [ $# -eq 1 ]; then
     exit 1
 fi
 
-QEMU_URI="qemu+ssh://davinci/system "
+QEMU_URI="qemu+ssh://$UNRAID_HOST/system "
 
 MAC=$(virsh --connect $QEMU_URI dumpxml $1 2>&1 | awk -F\' '/mac address/ {print $2}')
 if [ "$MAC" == "" ]; then
   exit
 fi
+
+# We might already know about it in our local arp table... check
+IP=$(ip n show | grep $MAC | awk '{print $1}')
+if [ "$IP" != "" ]; then
+  echo $IP
+  exit
+fi
+
+# No, brute force arp scan until we find it
 while true
 do
-  IP=$( sudo arp-scan 10.27.0.0/24 | grep $MAC | awk '{print $1}' )
+  IP=$( sudo arp-scan $UNRAID_KVM_NETWORK | grep $MAC | awk '{print $1}' )
   if [ "$IP" = "" ]
   then
     sleep 1
