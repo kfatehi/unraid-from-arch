@@ -1,0 +1,24 @@
+#!/bin/bash
+# Take one argument from the commandline: VM name
+if ! [ $# -eq 1 ]; then
+    echo "Usage: $0 <node-name>"
+    exit 1
+fi
+
+QEMU_URI="qemu+ssh://davinci/system "
+
+MAC=$(virsh --connect $QEMU_URI dumpxml $1 2>&1 | awk -F\' '/mac address/ {print $2}')
+if [ "$MAC" == "" ]; then
+  exit
+fi
+while true
+do
+  IP=$( sudo arp-scan 10.27.0.0/24 | grep $MAC | awk '{print $1}' )
+  if [ "$IP" = "" ]
+  then
+    sleep 1
+  else
+    break
+  fi
+done
+echo $IP

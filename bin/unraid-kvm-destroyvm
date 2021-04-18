@@ -1,0 +1,28 @@
+#!/bin/bash
+if [[ -z $1 ]]; then
+  echo "usage: $0 <name>"
+  exit
+fi
+
+
+VM_DIR=$UNRAID_SHARES_ROOT/domains/$1
+QEMU_URI="qemu+ssh://$UNRAID_HOST/system "
+VIRSH="virsh --connect $QEMU_URI"
+
+$VIRSH dominfo $1 > /dev/null 2>&1
+if [ "$?" -eq 0 ]; then
+  read -p "Do you want to destroy $1 [y/N/s]? " -r
+  if [[ $REPLY =~ ^[Yy]$ ]]; then
+    echo "destroying $1 now"
+    $VIRSH destroy $1
+    $VIRSH undefine $1
+    unraid-shares-mount domains
+    rm -rf $VM_DIR
+    unraid-shares-unmount domains
+  elif [[ $REPLY =~ ^[s]$ ]]; then
+      exit 0
+  else
+      echo -e "\nNot destroying $1. Exiting..."
+      exit 1
+  fi
+fi

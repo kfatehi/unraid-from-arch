@@ -1,0 +1,26 @@
+#!/bin/bash
+
+function die_help(){
+  echo "usage: $0 <share>"
+  echo "shares available:"
+  unraid-shares-list
+  exit
+}
+
+if [[ -z $1 ]]; then
+  die_help
+fi
+
+if mount | grep -q "//$UNRAID_HOST/$1 on $UNRAID_SHARES_ROOT/$1" ; then
+  exit 0
+fi
+
+if unraid-shares-list | awk '{print $1}' | grep -w -q $1; then
+  if [[ ! -d $UNRAID_SHARES_ROOT/$1 ]]; then
+    mkdir -p $UNRAID_SHARES_ROOT/$1
+  fi
+  sudo mount -t cifs -o credentials=$UNRAID_SMB_CREDS_FILE,uid=$UID //$UNRAID_HOST/$1 $UNRAID_SHARES_ROOT/$1
+else
+  echo "error: invalid share"
+  die_help
+fi

@@ -1,0 +1,4 @@
+#!/bin/bash
+IP=$(unraid-kvm-getaddr $1)
+shift
+ssh $SSH_OPTS -oStrictHostKeyChecking=accept-new ubuntu@$IP $@

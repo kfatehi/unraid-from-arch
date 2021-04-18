@@ -1,0 +1,136 @@
+#!/bin/bash
+if [[ -z $1 ]]; then
+  echo "usage: $0 <name>"
+  exit
+fi
+
+unraid-shares-mount domains
+unraid-shares-mount isos
+
+# Location of cloud image
+#IMAGE=/home/keyvan/unraid/isos/os/cloud/fedora/Fedora-Cloud-Base-33-1.2.x86_64.qcow2
+IMAGE=$UNRAID_SHARES_ROOT/isos/os/cloud/ubuntu/focal/focal-server-cloudimg-amd64.img
+if [ ! -f $IMAGE ]; then
+  echo "no such image: $IMAGE"
+  exit 1
+fi
+
+VM_DIR=$UNRAID_SHARES_ROOT/domains/$1
+CI_ISO=$VM_DIR/ci.iso
+DISK=$VM_DIR/disk.qcow2
+DISK_LOCAL=/mnt/user/domains/$1/disk.qcow2
+CI_ISO_LOCAL=/mnt/user/domains/$1/ci.iso
+USER_DATA=$VM_DIR/user-data
+META_DATA=$VM_DIR/meta-data
+PUBKEY=$(cat ~/.ssh/id_rsa.pub)
+QEMU_URI="qemu+ssh://$UNRAID_HOST/system "
+VIRSH="virsh --connect $QEMU_URI"
+VIRTINSTALL="virt-install --connect $QEMU_URI"
+
+MEM=1024
+CPUS=1
+BRIDGE=br0
+
+# Check if domain already exists
+$VIRSH dominfo $1 > /dev/null 2>&1
+if [ "$?" -eq 0 ]; then
+  echo -n "[WARNING] $1 already exists.  "
+  read -p "Do you want to overwrite $1 [y/N/s]? " -r
+  if [[ $REPLY =~ ^[Yy]$ ]]; then
+      echo ""
+  elif [[ $REPLY =~ ^[s]$ ]]; then
+      exit 0
+  else
+      echo -e "\nNot overwriting $1. Exiting..."
+      exit 1
+  fi
+fi
+# Start clean
+mkdir $VM_DIR
+pushd $VM_DIR > /dev/null
+
+echo "$(date -R) Destroying the $1 domain (if it exists)..."
+
+$VIRSH destroy $1
+$VIRSH undefine $1
+
+# cloud-init config: set hostname, remove cloud-init package,
+# and add ssh-key 
+  cat > $USER_DATA << _EOF_
+#cloud-config
+password: $UNRAID_KVM_CREATEVM_DEFAULT_PASSWORD
+chpasswd: { expire: False }
+ssh_pwauth: True
+
+# Hostname management
+preserve_hostname: False
+hostname: $1
+fqdn: $1.lab
+
+# Remove cloud-init when finished with it
+runcmd:
+- apt purge cloud-init --yes
+
+# Configure where output will go
+output: 
+all: ">> /var/log/cloud-init.log"
+
+# configure interaction with ssh server
+ssh_svcname: ssh
+ssh_deletekeys: True
+ssh_genkeytypes: ['rsa', 'ecdsa']
+
+# Install my public ssh key to the first user-defined user configured 
+# in cloud.cfg in the template (which is centos for CentOS cloud images)
+ssh_authorized_keys:
+- $PUBKEY
+_EOF_
+
+echo "instance-id: $1; local-hostname: $1" > $META_DATA
+
+echo "$(date -R) Copying template image..."
+cp $IMAGE $DISK
+
+# Create CD-ROM ISO with cloud-init config
+echo "$(date -R) Generating ISO for cloud-init..."
+genisoimage -output $CI_ISO -volid cidata -joliet -r $USER_DATA $META_DATA
+
+echo "$(date -R) Installing the domain and adjusting the configuration..."
+echo "[INFO] Installing"
+
+$VIRTINSTALL --import --name $1 --graphics vnc,listen=0.0.0.0,websocket=-1,keymap=en-us --video qxl --ram $MEM --vcpus $CPUS --disk $DISK_LOCAL,format=qcow2,bus=virtio --disk $CI_ISO_LOCAL,device=cdrom --network bridge=$BRIDGE,model=virtio --os-type=linux --os-variant=rhel6.0 --noautoconsole
+
+echo "Waiting for IP..."
+IP=$(unraid-kvm-getaddr $1)
+
+echo "System assigned IP $IP"
+
+# Eject cdrom
+echo "$(date -R) Cleaning up cloud-init..."
+$VIRSH change-media $1 hda --eject --config
+
+# Remove the unnecessary cloud init files
+rm -f $USER_DATA $CI_ISO
+
+echo "verifying ssh..."
+
+while true
+do
+  SSH_OPTS="-t"
+  if [[ "$(unraid-kvm-ssh $1 echo ok)" = "ok" ]]; then
+    echo "ssh access verified"
+    break
+  else
+    sleep 1
+  fi
+done
+
+
+popd > /dev/null
+
+echo "unmounting shares"
+
+unraid-shares-unmount domains
+unraid-shares-unmount isos
+
+echo "all done"

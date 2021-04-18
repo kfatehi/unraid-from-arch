@@ -1,0 +1,8 @@
+#!/bin/bash
+set -euo pipefail
+if ! mount | grep -q "//$UNRAID_HOST/$1 on $UNRAID_SHARES_ROOT/$1" ; then
+  exit 1
+else
+  sudo umount $UNRAID_SHARES_ROOT/$1
+  rmdir $UNRAID_SHARES_ROOT/$1
+fi
