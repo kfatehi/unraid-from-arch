@@ -5,9 +5,7 @@ if ! [ $# -eq 1 ]; then
     exit 1
 fi
 
-QEMU_URI="qemu+ssh://$UNRAID_HOST/system "
-
-MAC=$(virsh --connect $QEMU_URI dumpxml $1 2>&1 | awk -F\' '/mac address/ {print $2}')
+MAC=$(unraid-kvm-getmac $1)
 if [ "$MAC" == "" ]; then
   exit
 fi
@@ -22,11 +20,13 @@ fi
 # No, brute force arp scan until we find it
 while true
 do
-  IP=$( sudo arp-scan $UNRAID_KVM_NETWORK | grep $MAC | awk '{print $1}' )
+  IP=$( sudo arp-scan -I $UNRAID_KVM_INTERFACE $UNRAID_KVM_NETWORK | grep $MAC | awk '{print $1}' )
   if [ "$IP" = "" ]
   then
     sleep 1
   else
+    # Send a ping so next time it's in local arp table so this command is faster
+    ping -c1 -t1 $IP 2>&1 > /dev/null
     break
   fi
 done

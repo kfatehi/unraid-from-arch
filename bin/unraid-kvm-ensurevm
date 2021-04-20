@@ -1,0 +1,11 @@
+#!/bin/bash
+# Take one argument from the commandline: VM name
+if ! [ $# -eq 1 ]; then
+    echo "Usage: $0 <node-name>"
+    exit 1
+fi
+MAC=$(unraid-kvm-getmac $1)
+if [ "$MAC" == "" ]; then
+  unraid-kvm-createvm $1
+  unraid-kvm-ssh $1 "sudo apt update && sudo apt upgrade -y"
+fi

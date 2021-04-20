@@ -1,2 +1,3 @@
 #!/bin/bash
+
 ssh ubuntu@$(unraid-kvm-getaddr $1) sudo tcpdump -i any -U -s0 -w - "$2" | wireshark -k -i -

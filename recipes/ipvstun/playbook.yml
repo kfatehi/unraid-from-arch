@@ -1,0 +1,31 @@
+---
+- hosts: director
+  become: yes
+  tasks:
+    - name: Get ipvsadm
+      apt: name=ipvsadm state=latest
+    - name: Load the IPIP module
+      community.general.modprobe:
+        name: ipip
+        state: present
+
+- hosts: web
+  become: yes
+  tasks:
+    - name: Get nginx
+      apt: name=nginx state=latest
+    - name: start nginx
+      service:
+          name: nginx
+          state: started
+    - name: Load the IPIP module
+      community.general.modprobe:
+        name: ipip
+        state: present
+    - name: Enable IPv4 Forwarding
+      ansible.posix.sysctl:
+        name: net.ipv4.ip_forward
+        value: '1'
+        sysctl_set: yes
+        state: present
+        reload: yes

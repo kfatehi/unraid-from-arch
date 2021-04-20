@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# Take one argument from the commandline: VM name
+if ! [ $# -eq 1 ]; then
+    echo "Usage: $0 <node-name>"
+    exit 1
+fi
+
+QEMU_URI="qemu+ssh://$UNRAID_HOST/system "
+
+virsh --connect $QEMU_URI dumpxml $1 2>&1 | awk -F\' '/mac address/ {print $2}'
