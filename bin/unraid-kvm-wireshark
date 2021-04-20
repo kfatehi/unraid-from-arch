@@ -5,5 +5,8 @@
 # these can be provided respectively
 # e.g.: capture only non-ssh traffic display only icmp traffic in wireshark
 # unraid-kvm-wireshark director "not port 22" "icmp"
+#
+# in this example we also leverage the ability to configure the titlebar!
+# ssh web004 tcpdump -i tunl0 -U -s0 -w - 'not port 22' | wireshark -k -Y "icmp"  -i - -o "gui.window_title:Realserver/tunl0"
 
 ssh ubuntu@$(unraid-kvm-getaddr $1) sudo tcpdump -i any -U -s0 -w - "$2" | wireshark -Y "$3" -k -i -
