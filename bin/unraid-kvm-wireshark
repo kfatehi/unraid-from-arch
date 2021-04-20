@@ -1,3 +1,9 @@
 #!/bin/bash
 
-ssh ubuntu@$(unraid-kvm-getaddr $1) sudo tcpdump -i any -U -s0 -w - "$2" | wireshark -k -i -
+# wireshark and tcpdump have different filter syntaxes
+# wireshark can take a display filter in its usual format using the -Y flag
+# these can be provided respectively
+# e.g.: capture only non-ssh traffic display only icmp traffic in wireshark
+# unraid-kvm-wireshark director "not port 22" "icmp"
+
+ssh ubuntu@$(unraid-kvm-getaddr $1) sudo tcpdump -i any -U -s0 -w - "$2" | wireshark -Y "$3" -k -i -
