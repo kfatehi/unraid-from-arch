@@ -1,0 +1,24 @@
+#!/bin/bash
+if [[ -z $1 ]]; then
+  echo "usage: $0 <name>"
+  exit
+fi
+
+unraid-shares-mount domains
+
+
+QEMU_URI="qemu+ssh://$UNRAID_HOST/system "
+
+VM_DIR=$UNRAID_SHARES_ROOT/domains/$1
+DISK=$VM_DIR/disk.qcow2
+
+if [[ ! -f $DISK ]]; then
+  echo "$DISK not available, bailing"
+  exit 1
+fi
+
+qemu-img resize $DISK +10G
+
+echo "all set, boot it up and run these and you'll have another 10 GB:"
+echo " sudo growpart /dev/vda 1"
+echo " sudo resize2fs /dev/vda1"
