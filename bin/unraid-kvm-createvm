@@ -27,8 +27,8 @@ QEMU_URI="qemu+ssh://$UNRAID_HOST/system "
 VIRSH="virsh --connect $QEMU_URI"
 VIRTINSTALL="virt-install --connect $QEMU_URI"
 
-MEM=1024
-CPUS=1
+MEM=4096
+CPUS=8
 BRIDGE=$UNRAID_KVM_BRIDGE
 
 # Check if domain already exists
@@ -91,6 +91,9 @@ echo "instance-id: $1; local-hostname: $1" > $META_DATA
 
 echo "$(date -R) Copying template image..."
 cp $IMAGE $DISK
+
+echo "Making the disk 12 GB bigger"
+qemu-img resize $DISK +12G
 
 # Create CD-ROM ISO with cloud-init config
 echo "$(date -R) Generating ISO for cloud-init..."
