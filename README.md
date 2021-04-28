@@ -4,8 +4,8 @@ These scripts are designed to be run on an archlinux computer
 and meant to target an unraid system particularly for VM labs
 by using cloud-init. It assumes you have two shares:
 
-isos
-domains
+- isos
+- domains
 
 Domains comes with unraid and is where the virtual machines are built.
 This is not exported by default, so you want to do that.
