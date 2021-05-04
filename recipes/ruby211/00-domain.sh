@@ -1,7 +1,8 @@
 #!/bin/bash
 
-unraid_net_27
-export DOMAIN=ruby211
+export NET="${NET:-27}"
+unraid-kvm-setnet $NET
+export DOMAIN="${DOMAIN:-ruby211}" 
 
 unraid-kvm-ensurevm $DOMAIN
 
